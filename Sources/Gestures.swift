@@ -23,6 +23,24 @@ let moveTol = 10.0, tapMaxSecs = 0.35, dblDist = 60.0, followTol = 20.0, pinchTo
 // and come back more slowly than a mouse button, so the window is 0.75 s, or the system's double-click
 // speed if that is slower.
 func dblSecs() -> Double { max(0.75, NSEvent.doubleClickInterval) }
+// A second try after a near miss also lands soon and close by, but on something else: that is a new
+// click, not a double click (which a button may ignore and a file would open). Beyond a finger's
+// wobble, a touch continues the last tap only if both land on the same element.
+let tapWobble = 15.0
+let axSystem: AXUIElement = { let e = AXUIElementCreateSystemWide(); AXUIElementSetMessagingTimeout(e, 0.05); return e }()
+func element(at p: CGPoint) -> AXUIElement? {
+    var e: AXUIElement?
+    return AXUIElementCopyElementAtPosition(axSystem, Float(p.x), Float(p.y), &e) == .success ? e : nil
+}
+func continuesTap(_ p: CGPoint) -> Bool {
+    let d = dist(p, lastTapPt)
+    guard now() - lastTapTime < dblSecs(), d < dblDist else { return false }
+    if d <= tapWobble || !AXIsProcessTrusted() { return true }
+    guard let was = element(at: lastTapPt), let here = element(at: p) else { return true }
+    if CFEqual(was, here) { return true }
+    log("touch near the last tap, on something else: a new click")
+    return false
+}
 var slots: [Int: Slot] = [:]   // keyed by finger collection cookie
 var mode = Mode.idle, dirty = false, pressSeq = 0, lastN = 0
 var lastPt = CGPoint.zero, twoStart = CGPoint.zero
@@ -417,7 +435,7 @@ func commit() {
             inDragApp = cfg.dragApps.contains(app) || onTitlebar || edgeSnap != nil || onDesktop
             canHold = !inDragApp || onDesktop   // in title bars, drag apps and at edges a press is only ever a drag
             if inDragApp { log("down \(onDesktop ? "on the desktop" : "in " + app)\(edgeSnap != nil ? " window edge" : onTitlebar ? " title bar" : ""): drag mode") }
-            pressClicks = now() - lastTapTime < dblSecs() && dist(p, lastTapPt) < dblDist ? min(clicks + 1, 3) : 1
+            pressClicks = continuesTap(p) ? min(clicks + 1, 3) : 1
             pressSeq += 1
             let seq = pressSeq
             mode = .pending(p, seq)

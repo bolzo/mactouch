@@ -101,7 +101,9 @@ a move counts only once the next report confirms it, so that jump never turns a 
 A touch that lands within 0.75 s (or the system's double-click speed, if slower) and 60 pt of a
 tap continues it: lifted, it is a double or triple click; moved, it selects by word or
 by line, so text can be selected without turning one-finger scroll off. It may wobble 20 pt before
-it counts as moving, and it never turns into a hold.
+it counts as moving, and it never turns into a hold. More than 15 pt from the tap, it continues it
+only if it lands on the same thing (by Accessibility): a quick second try after a near miss, on the
+button next to it, is a click of its own, not a double click.
 
 Scrolls carry a trackpad's phases (began, changed, ended, then momentum), so apps treat them as
 trackpad scrolls: lists stretch at their ends and spring back, and a scroll and its momentum stay
